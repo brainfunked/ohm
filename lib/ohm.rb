@@ -84,25 +84,20 @@ module Ohm
     attr_accessor :options
 
     def initialize(context = :main, options = {})
-      @context = context
-      @options = options
-    end
-
-    def reset!
-      threaded[context] = nil
+      @context    = context
+      @options    = options
+      @redis      = nil
     end
 
     def start(options = {})
-      self.options = options
-      self.reset!
+      @options = options
+      redis
     end
 
     def redis
-      threaded[context] ||= Redis.connect(options)
-    end
-
-    def threaded
-      Thread.current[:ohm] ||= {}
+      conf = @options.dup
+      pool_size = conf.delete(:pool_size) || 5
+      @redis ||= EM::Synchrony::ConnectionPool.new(size: pool_size) { Redis.new(conf) }
     end
   end
 
