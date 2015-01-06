@@ -6,6 +6,7 @@ require "securerandom"
 require "scrivener"
 require "ohm/transaction"
 require "ohm/command"
+require "em-synchrony"
 
 module Ohm
 
