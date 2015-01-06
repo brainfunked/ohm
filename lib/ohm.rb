@@ -164,8 +164,8 @@ module Ohm
 
     # Wraps the whole pipelining functionality.
     def fetch(ids)
-      arr = db.pipelined do
-        ids.each { |id| db.hgetall(namespace[id]) }
+      arr = db.pipelined do |piped|
+        ids.each { |id| piped.hgetall(namespace[id]) }
       end
 
       res = []
