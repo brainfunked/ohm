@@ -107,12 +107,27 @@ configuration requires it. Defaults to `nil`.
 
 Database timeout in seconds, defaults to `0`.
 
+### :pool_size
+
+Passed as the `:size` parameter to `EM::Synchrony::ConnectionPool` when
+initializing the `Fiber` pool. Check the 'Use with Synchrony driver' section
+below.
+
 ### :thread_safe
 
 Initializes the client with a monitor. It has a small performance penalty, and
 it's off by default. For thread safety, it is recommended to use a different
 instance per thread. I you have no choice, then pass `:thread_safe => true`
-when connecting.
+when connecting. **Do NOT use with this fork.** Check the 'Use with Synchrony
+driver' section below.
+
+## Use with Synchrony driver
+
+This fork has been updated to work with
+[em-synchrony](https://github.com/igrigorik/em-synchrony). The database
+connection is a fiber pool using `EM::Synchrony::ConnectionPool`. As such, any
+execution of the model code using `Ohm` has to be wrapped in an `EM.synchrony`
+block.
 
 Models
 ------
