@@ -90,15 +90,22 @@ module Ohm
       @redis      = nil
     end
 
+    def reset!
+      @redis = nil
+    end
+
     def start(options = {})
+      reset!
       @options = options
       redis
     end
 
     def redis
+      return @redis if not @redis.nil?
+
       conf = @options.dup
       pool_size = conf.delete(:pool_size) || 5
-      @redis ||= EM::Synchrony::ConnectionPool.new(size: pool_size) { Redis.new(conf) }
+      @redis = EM::Synchrony::ConnectionPool.new(size: pool_size) { Redis.new(conf) }
     end
   end
 
