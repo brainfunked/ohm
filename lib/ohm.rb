@@ -242,9 +242,9 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      model.db.multi do
-        db.del(key)
-        ids.each { |id| db.rpush(key, id) }
+      model.db.multi do |mdb|
+        mdb.del(key)
+        ids.each { |id| mdb.rpush(key, id) }
       end
     end
 
@@ -542,9 +542,9 @@ module Ohm
     def replace(models)
       ids = models.map { |model| model.id }
 
-      key.redis.multi do
-        db.del(key)
-        ids.each { |id| db.sadd(key, id) }
+      key.redis.multi do |mdb|
+        mdb.del(key)
+        ids.each { |id| mdb.sadd(key, id) }
       end
     end
   end
