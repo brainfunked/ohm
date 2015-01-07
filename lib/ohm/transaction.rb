@@ -112,8 +112,8 @@ module Ohm
 
         run(phase[:read], store)
 
-        break if db.multi do
-          run(phase[:write], store)
+        break if db.multi do |mdb|
+          run(phase[:write], store, mdb)
         end
 
         store = nil
@@ -122,8 +122,8 @@ module Ohm
       phase[:after].each(&:call)
     end
 
-    def run(procs, store)
-      procs.each { |p| p.call(store) }
+    def run(procs, store, mdb = nil)
+      procs.each { |p| p.call(store, mdb) }
     end
   end
 

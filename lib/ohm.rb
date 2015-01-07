@@ -1180,7 +1180,8 @@ module Ohm
     # Note: This method is dangerous because it doesn't update indices
     # and uniques. Use it wisely. The safe equivalent is `update`.
     #
-    def set(att, val)
+    def set(att, val, mdb = nil)
+      db = mdb || model.db
       val.to_s.empty? ? db.hdel(key, att) : db.hset(key, att, val)
       @attributes[att] = val
     end
@@ -1190,13 +1191,15 @@ module Ohm
     end
 
     # Increment a counter atomically. Internally uses HINCRBY.
-    def incr(att, count = 1)
+    def incr(att, count = 1, mdb = nil)
+      db = mdb || model.db
       db.hincrby(key[:counters], att, count)
     end
 
     # Decrement a counter atomically. Internally uses HINCRBY.
-    def decr(att, count = 1)
-      incr(att, -count)
+    def decr(att, count = 1, mdb = nil)
+      db = mdb || model.db
+      incr(att, -count, db)
     end
 
     # Return a value that allows the use of models as hash keys.
@@ -1325,15 +1328,15 @@ module Ohm
           indices  = _read_index_type(:indices)
         end
 
-        t.write do
-          db.sadd(model.key[:all], id)
-          _delete_existing_indices(existing_indices)
-          _delete_existing_uniques(existing_uniques)
-          _delete_indices(_indices)
-          _delete_uniques(_uniques)
-          _save
-          _save_indices(indices)
-          _save_uniques(uniques)
+        t.write do |store, mdb|
+          mdb.sadd(model.key[:all], id)
+          _delete_existing_indices(existing_indices, mdb)
+          _delete_existing_uniques(existing_uniques, mdb)
+          _delete_indices(_indices, mdb)
+          _delete_uniques(_uniques, mdb)
+          _save(mdb)
+          _save_indices(indices, mdb)
+          _save_uniques(uniques, mdb)
         end
       end
     end
@@ -1366,15 +1369,15 @@ module Ohm
           _indices = db.smembers(key[:_indices])
         end
 
-        t.write do
-          _delete_uniques(_uniques)
-          _delete_indices(_indices)
-          _delete_existing_uniques(existing_uniques)
-          _delete_existing_indices(existing_indices)
-          model.collections.each { |e| db.del(key[e]) }
-          db.srem(model.key[:all], id)
-          db.del(key[:counters])
-          db.del(key)
+        t.write do |store, mdb|
+          _delete_uniques(_uniques, mdb)
+          _delete_indices(_indices, mdb)
+          _delete_existing_uniques(existing_uniques, mdb)
+          _delete_existing_indices(existing_indices, mdb)
+          model.collections.each { |e| mdb.del(key[e]) }
+          mdb.srem(model.key[:all], id)
+          mdb.del(key[:counters])
+          mdb.del(key)
         end
 
         yield t if block_given?
@@ -1488,7 +1491,8 @@ module Ohm
       model.uniques.map { |att| model.key[:uniques][att] }
     end
 
-    def _save
+    def _save(mdb = nil)
+      db = mdb || model.db
       catch :empty do
         db.del(key)
         db.hmset(key, *_skip_empty(attributes).to_a.flatten)
@@ -1516,7 +1520,8 @@ module Ohm
       end
     end
 
-    def _save_uniques(uniques)
+    def _save_uniques(uniques, mdb = nil)
+      db = mdb || model.db
       attrs = model.attributes
 
       uniques.each do |att, val|
@@ -1527,38 +1532,41 @@ module Ohm
       end
     end
 
-    def _delete_uniques(uniques)
+    def _delete_uniques(uniques, mdb = nil)
+      db = mdb || model.db
       uniques.each do |unique, val|
         db.hdel(unique, val)
         db.hdel(key[:_uniques], unique)
       end
     end
 
-    def _delete_existing_indices(existing)
+    def _delete_existing_indices(existing, mdb = nil)
       return unless existing
 
       existing = existing.map { |key, value| model.to_indices(key, value) }
       existing.flatten!(1)
 
-      _delete_indices(existing)
+      _delete_indices(existing, mdb)
     end
 
-    def _delete_existing_uniques(existing)
+    def _delete_existing_uniques(existing, mdb = nil)
       return unless existing
 
       _delete_uniques(existing.map { |key, value|
         [model.key[:uniques][key], value]
-      })
+      }, mdb)
     end
 
-    def _delete_indices(indices)
+    def _delete_indices(indices, mdb = nil)
+      db = mdb || model.db
       indices.each do |index|
         db.srem(index, id)
         db.srem(key[:_indices], index)
       end
     end
 
-    def _save_indices(indices)
+    def _save_indices(indices, mdb = nil)
+      db = mdb || model.db
       attrs = model.attributes
 
       indices.each do |att, val|
